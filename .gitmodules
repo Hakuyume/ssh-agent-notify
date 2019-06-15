@@ -1,0 +1,3 @@
+[submodule "ssh-agent-sys/openssh"]
+	path = ssh-agent-sys/openssh
+	url = git://anongit.mindrot.org/openssh.git

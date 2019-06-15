@@ -1,0 +1,10 @@
+[package]
+name = "ssh-agent-sys"
+version = "0.1.0"
+authors = ["Toru Ogawa <Hakuyume@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "0.49"
