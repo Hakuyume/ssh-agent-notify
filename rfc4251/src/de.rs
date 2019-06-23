@@ -127,10 +127,7 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        struct Access<'a, 'de> {
-            deserializer: &'a mut Deserializer<'de>,
-            len: usize,
-        }
+        struct Access<'a, 'de>(&'a mut Deserializer<'de>, usize);
 
         impl<'a, 'de> SeqAccess<'de> for Access<'a, 'de> {
             type Error = Error;
@@ -139,9 +136,9 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
             where
                 T: DeserializeSeed<'de>,
             {
-                if self.len > 0 {
-                    let v = seed.deserialize(&mut *self.deserializer)?;
-                    self.len -= 1;
+                if self.1 > 0 {
+                    let v = seed.deserialize(&mut *self.0)?;
+                    self.1 -= 1;
                     Ok(Some(v))
                 } else {
                     Ok(None)
@@ -149,10 +146,7 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
             }
         }
 
-        visitor.visit_seq(Access {
-            deserializer: self,
-            len,
-        })
+        visitor.visit_seq(Access(self, len))
     }
 
     fn deserialize_tuple_struct<V>(
