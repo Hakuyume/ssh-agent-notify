@@ -1,2 +1,2 @@
 [workspace]
-members = ["ssh-agent-sys"]
+members = ["rfc4251", "ssh-agent-notify", "ssh-agent-sys"]
