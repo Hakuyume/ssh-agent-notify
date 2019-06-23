@@ -140,7 +140,7 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
                 T: DeserializeSeed<'de>,
             {
                 if self.len > 0 {
-                    let v = T::deserialize(seed, &mut *self.deserializer)?;
+                    let v = seed.deserialize(&mut *self.deserializer)?;
                     self.len -= 1;
                     Ok(Some(v))
                 } else {
@@ -208,7 +208,7 @@ impl<'de> VariantAccess<'de> for &mut Deserializer<'de> {
     where
         T: DeserializeSeed<'de>,
     {
-        DeserializeSeed::deserialize(seed, self)
+        seed.deserialize(self)
     }
 
     fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
