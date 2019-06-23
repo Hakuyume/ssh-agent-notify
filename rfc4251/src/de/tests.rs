@@ -71,6 +71,18 @@ fn test_struct() {
 }
 
 #[test]
+fn test_enum() {
+    #[derive(Debug, Deserialize, PartialEq)]
+    enum E<'a> {
+        Foo(u8),
+        Bar(&'a [u8]),
+    }
+
+    check(&[0, 42], E::Foo(42));
+    check(&[1, 0, 0, 0, 3, b'b', b'a', b'r'], E::Bar(b"bar"));
+}
+
+#[test]
 #[should_panic(expected = "InsufficientData")]
 fn test_insufficient_data() {
     check::<u8>(&[], 0);

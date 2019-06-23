@@ -1,5 +1,8 @@
 use crate::Error;
-use serde::de::{self, Deserialize, DeserializeSeed, SeqAccess, Visitor};
+use serde::de::{
+    self, Deserialize, DeserializeSeed, EnumAccess, IntoDeserializer, SeqAccess, VariantAccess,
+    Visitor,
+};
 use std::convert::TryInto;
 use std::mem;
 
@@ -169,9 +172,67 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
         self.deserialize_tuple(fields.len(), visitor)
     }
 
-    impl_not_supported!(deserialize_enum, &'static str, &'static [&'static str]);
+    fn deserialize_enum<V>(
+        self,
+        _name: &'static str,
+        _variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_enum(self)
+    }
+
     impl_not_supported!(deserialize_identifier);
     impl_not_supported!(deserialize_ignored_any);
+}
+
+impl<'de> VariantAccess<'de> for &mut Deserializer<'de> {
+    type Error = Error;
+
+    fn unit_variant(self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value, Self::Error>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        seed.deserialize(self)
+    }
+
+    fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        de::Deserializer::deserialize_tuple(self, len, visitor)
+    }
+
+    fn struct_variant<V>(
+        self,
+        fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        de::Deserializer::deserialize_tuple(self, fields.len(), visitor)
+    }
+}
+
+impl<'de> EnumAccess<'de> for &mut Deserializer<'de> {
+    type Error = Error;
+    type Variant = Self;
+
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Self::Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        let tag = <u8 as Deserialize>::deserialize(&mut *self)?;
+        let v = seed.deserialize(tag.into_deserializer())?;
+        Ok((v, self))
+    }
 }
 
 #[cfg(test)]

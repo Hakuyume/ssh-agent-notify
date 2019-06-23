@@ -1,5 +1,5 @@
-mod de;
 mod error;
+mod de;
 
-pub use self::de::Deserializer;
 pub use self::error::Error;
+pub use self::de::Deserializer;
