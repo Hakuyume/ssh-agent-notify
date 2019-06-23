@@ -1,7 +1,6 @@
 use crate::Error;
 use serde::de::{
-    self, Deserialize, DeserializeSeed, EnumAccess, IntoDeserializer, SeqAccess, VariantAccess,
-    Visitor,
+    self, Deserialize, DeserializeSeed, EnumAccess, SeqAccess, VariantAccess, Visitor,
 };
 use std::convert::TryInto;
 use std::mem;
@@ -229,9 +228,7 @@ impl<'de> EnumAccess<'de> for &mut Deserializer<'de> {
     where
         V: DeserializeSeed<'de>,
     {
-        let tag = <u8 as Deserialize>::deserialize(&mut *self)?;
-        let v = seed.deserialize(tag.into_deserializer())?;
-        Ok((v, self))
+        Ok((seed.deserialize(&mut *self)?, self))
     }
 }
 
