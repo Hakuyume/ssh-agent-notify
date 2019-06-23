@@ -96,7 +96,7 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let len = <u32 as Deserialize>::deserialize(&mut *self)? as usize;
+        let len = u32::deserialize(&mut *self)? as usize;
         let v = visitor.visit_borrowed_bytes(self.0.get(..len).ok_or(Error::InsufficientData)?)?;
         self.0 = &self.0[len..];
         Ok(v)
@@ -118,7 +118,7 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let len = <u32 as Deserialize>::deserialize(&mut *self)? as usize;
+        let len = u32::deserialize(&mut *self)? as usize;
         self.deserialize_tuple(len, visitor)
     }
 
