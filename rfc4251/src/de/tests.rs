@@ -6,9 +6,7 @@ fn check<'de, T>(data: &'de [u8], expected: T)
 where
     T: Debug + PartialEq + Deserialize<'de>,
 {
-    let mut deserializer = Deserializer::new(data);
-    assert_eq!(T::deserialize(&mut deserializer).unwrap(), expected);
-    assert_eq!(deserializer.is_empty(), true);
+    assert_eq!(from_slice::<T>(data).unwrap(), expected);
 }
 
 #[test]
@@ -86,4 +84,10 @@ fn test_enum() {
 #[should_panic(expected = "InsufficientData")]
 fn test_insufficient_data() {
     check::<u8>(&[], 0);
+}
+
+#[test]
+#[should_panic(expected = "RemainingData")]
+fn test_remaining_data() {
+    check::<u8>(&[0, 1], 0);
 }

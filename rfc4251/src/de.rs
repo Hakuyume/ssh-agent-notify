@@ -5,17 +5,20 @@ use serde::de::{
 use std::convert::TryInto;
 use std::mem;
 
-pub struct Deserializer<'de>(&'de [u8]);
-
-impl<'de> Deserializer<'de> {
-    pub fn new(data: &'de [u8]) -> Self {
-        Self(data)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+pub fn from_slice<'de, T>(data: &'de [u8]) -> Result<T, Error>
+where
+    T: Deserialize<'de>,
+{
+    let mut deserializer = Deserializer(data);
+    let v = T::deserialize(&mut deserializer)?;
+    if deserializer.0.is_empty() {
+        Ok(v)
+    } else {
+        Err(Error::RemainingData)
     }
 }
+
+struct Deserializer<'de>(&'de [u8]);
 
 macro_rules! impl_uint {
     ($t:ty, $f:ident, $v:ident) => {
