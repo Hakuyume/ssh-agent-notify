@@ -1,64 +1,56 @@
 use super::*;
 use serde::Deserialize;
+use std::fmt::Debug;
+
+fn check<'de, T>(data: &'de [u8], expected: T)
+where
+    T: Debug + PartialEq + Deserialize<'de>,
+{
+    let mut deserializer = Deserializer::new(data);
+    assert_eq!(T::deserialize(&mut deserializer).unwrap(), expected);
+    assert_eq!(deserializer.is_empty(), true);
+}
 
 #[test]
 fn test_byte() {
-    assert_eq!(from_slice::<u8>(&[42]).unwrap(), 42);
+    check::<u8>(&[42], 42);
 }
 
 #[test]
 fn test_boolean() {
-    assert_eq!(from_slice::<bool>(&[0]).unwrap(), false);
-    assert_eq!(from_slice::<bool>(&[1]).unwrap(), true);
-    assert_eq!(from_slice::<bool>(&[2]).unwrap(), true);
+    check(&[0], false);
+    check(&[1], true);
+    check(&[2], true);
 }
 
 #[test]
 fn test_uint32() {
-    assert_eq!(from_slice::<u32>(&[0, 0, 7, 227]).unwrap(), 2019);
+    check::<u32>(&[0, 0, 7, 227], 2019);
 }
 
 #[test]
 fn test_uint64() {
-    assert_eq!(
-        from_slice::<u64>(&[1, 2, 3, 4, 5, 6, 7, 8]).unwrap(),
-        0x0102_0304_0506_0708
-    );
+    check::<u64>(&[1, 2, 3, 4, 5, 6, 7, 8], 0x0102_0304_0506_0708);
 }
 
 #[test]
 fn test_string_binary() {
-    assert_eq!(
-        from_slice::<&[u8]>(&[0, 0, 0, 3, b'f', b'o', b'o']).unwrap(),
-        b"foo"
-    );
+    check::<&[u8]>(&[0, 0, 0, 3, b'f', b'o', b'o'], b"foo");
 }
 
 #[test]
 fn test_string_text() {
-    assert_eq!(
-        from_slice::<&str>(&[0, 0, 0, 3, b'f', b'o', b'o']).unwrap(),
-        "foo"
-    );
+    check(&[0, 0, 0, 3, b'f', b'o', b'o'], "foo");
 }
 
 #[test]
 fn test_seq() {
-    assert_eq!(
-        from_slice::<Vec<&[u8]>>(&[
-            0, 0, 0, 2, 0, 0, 0, 3, b'f', b'o', b'o', 0, 0, 0, 3, b'b', b'a', b'r'
-        ])
-        .unwrap(),
-        &[&b"foo"[..], b"bar"]
-    );
+    check::<&[u8]>(&[0, 0, 0, 4, 2, 0, 1, 9], &[2, 0, 1, 9]);
 }
 
 #[test]
 fn test_tuple() {
-    assert_eq!(
-        from_slice::<(u8, &[u8])>(&[42, 0, 0, 0, 3, b'f', b'o', b'o']).unwrap(),
-        (42, &b"foo"[..])
-    );
+    check::<(u8, &[u8])>(&[42, 0, 0, 0, 3, b'f', b'o', b'o'], (42, b"foo"));
 }
 
 #[test]
@@ -69,12 +61,12 @@ fn test_struct() {
         string: &'a [u8],
     }
 
-    assert_eq!(
-        from_slice::<S>(&[42, 0, 0, 0, 3, b'f', b'o', b'o']).unwrap(),
+    check(
+        &[42, 0, 0, 0, 3, b'f', b'o', b'o'],
         S {
             byte: 42,
-            string: b"foo"
-        }
+            string: b"foo",
+        },
     );
 }
 
@@ -86,21 +78,12 @@ fn test_enum() {
         Bar(&'a [u8]),
     }
 
-    assert_eq!(from_slice::<E>(&[0, 42]).unwrap(), E::Foo(42));
-    assert_eq!(
-        from_slice::<E>(&[1, 0, 0, 0, 3, b'b', b'a', b'r']).unwrap(),
-        E::Bar(b"bar")
-    );
+    check(&[0, 42], E::Foo(42));
+    check(&[1, 0, 0, 0, 3, b'b', b'a', b'r'], E::Bar(b"bar"));
 }
 
 #[test]
 #[should_panic(expected = "InsufficientData")]
 fn test_insufficient_data() {
-    from_slice::<u8>(&[]).unwrap();
-}
-
-#[test]
-#[should_panic(expected = "RemainingData")]
-fn test_remaining_data() {
-    from_slice::<u8>(&[0, 1]).unwrap();
+    check::<u8>(&[], 0);
 }
