@@ -183,7 +183,13 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_enum(self)
+        let mut deserializer = Deserializer(<&'de [u8]>::deserialize(self)?);
+        let v = visitor.visit_enum(&mut deserializer)?;
+        if deserializer.0.is_empty() {
+            Ok(v)
+        } else {
+            Err(Error::RemainingData)
+        }
     }
 
     impl_not_supported!(deserialize_identifier);
