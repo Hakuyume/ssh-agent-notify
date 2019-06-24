@@ -10,12 +10,7 @@ where
     T: Deserialize<'de>,
 {
     let mut deserializer = Deserializer(data);
-    let v = T::deserialize(&mut deserializer)?;
-    if deserializer.0.is_empty() {
-        Ok(v)
-    } else {
-        Err(Error::RemainingData)
-    }
+    T::deserialize(&mut deserializer)
 }
 
 struct Deserializer<'de>(&'de [u8]);
@@ -184,12 +179,7 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         let mut deserializer = Deserializer(<&'de [u8]>::deserialize(self)?);
-        let v = visitor.visit_enum(&mut deserializer)?;
-        if deserializer.0.is_empty() {
-            Ok(v)
-        } else {
-            Err(Error::RemainingData)
-        }
+        visitor.visit_enum(&mut deserializer)
     }
 
     impl_not_supported!(deserialize_identifier);

@@ -8,7 +8,6 @@ pub enum Error {
 
     NotSupported,
     InsufficientData,
-    RemainingData,
 }
 
 impl Display for Error {

@@ -121,9 +121,3 @@ fn test_enum() {
 fn test_insufficient_data() {
     check::<u8>(&[], 0);
 }
-
-#[test]
-#[should_panic(expected = "RemainingData")]
-fn test_remaining_data() {
-    check::<u8>(&[0, 1], 0);
-}
