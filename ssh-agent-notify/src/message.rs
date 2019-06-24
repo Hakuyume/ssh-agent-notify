@@ -81,7 +81,7 @@ where
         impl<'de> de::Visitor<'de> for Visitor {
             type Value = KeyBlob<'de>;
             fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-                write!(formatter, "a enum tagged by u32")
+                write!(formatter, "a enum tagged by byte array")
             }
 
             fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
