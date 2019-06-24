@@ -76,7 +76,10 @@ fn test_enum() {
         Bar(&'a [u8]),
     }
 
-    impl<'de> Deserialize<'de> for E<'de> {
+    impl<'de, 'a> Deserialize<'de> for E<'a>
+    where
+        'de: 'a,
+    {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
             D: de::Deserializer<'de>,

@@ -2,10 +2,11 @@
 
 mod message;
 
-use self::message::{KeyBlob, Message};
+use self::message::Message;
 use futures::compat::{Compat01As03, Future01CompatExt, Stream01CompatExt};
 use futures::executor::block_on;
 use futures::prelude::*;
+use std::convert::TryInto;
 use std::env;
 use std::error::Error;
 use std::ffi::OsStr;
@@ -44,24 +45,15 @@ async fn proc(ssh_auth_sock: &OsStr, conn: io::Result<UnixStream>) -> io::Result
     let mut client = Compat01As03::new(conn?);
 
     while let Ok(request) = read(&mut client).await {
-        write(&mut server, &request).await?;
+        server.write_all(&request).await?;
         if let Ok(request) = rfc4251::from_slice::<Message>(&request) {
             println!("request: {:?}", request);
         }
 
         let response = read(&mut server).await?;
-        write(&mut client, &response).await?;
+        client.write_all(&response).await?;
         if let Ok(response) = rfc4251::from_slice::<Message>(&response) {
-            println!("request: {:?}", response);
-            match response {
-                Message::IdentitiesAnswer(identities) => {
-                    for identity in identities.iter() {
-                        let key_blob = rfc4251::from_slice::<KeyBlob>(identity.0).unwrap();
-                        println!("{:?}", key_blob);
-                    }
-                }
-                _ => (),
-            }
+            println!("response: {:?}", response);
         }
     }
     Ok(())
@@ -71,21 +63,20 @@ async fn read<R>(r: &mut R) -> io::Result<Vec<u8>>
 where
     R: Unpin + AsyncRead,
 {
-    let mut buf = [0; 4];
-    r.read_exact(&mut buf).await?;
-    let len = u32::from_be_bytes(buf);
+    let mut buf = Vec::new();
 
-    let mut buf = vec![0; len as _];
+    unsafe {
+        buf.reserve(4);
+        buf.set_len(4);
+    }
     r.read_exact(&mut buf).await?;
+    let len = u32::from_be_bytes(buf[..].try_into().unwrap()) as usize;
+
+    unsafe {
+        buf.reserve(len);
+        buf.set_len(4 + len);
+    }
+    r.read_exact(&mut buf[4..]).await?;
+
     Ok(buf)
-}
-
-async fn write<'a, W>(w: &'a mut W, data: &'a [u8]) -> io::Result<()>
-where
-    W: Unpin + AsyncWrite,
-{
-    let len = (data.len() as u32).to_be_bytes();
-    w.write_all(&len).await?;
-    w.write_all(data).await?;
-    Ok(())
 }

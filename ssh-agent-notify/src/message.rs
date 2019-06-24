@@ -1,17 +1,19 @@
-use serde::de::{self, DeserializeSeed, Deserializer, EnumAccess, VariantAccess, Visitor};
+use serde::de::{self, Deserializer, EnumAccess, VariantAccess};
 use serde::Deserialize;
 use std::fmt::{self, Formatter};
-use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub enum Message<'a> {
     RequestIdentites,
-    IdentitiesAnswer(Vec<(&'a [u8], &'a str)>),
+    IdentitiesAnswer(Vec<(KeyBlob<'a>, &'a str)>),
     SignRequest((&'a [u8], &'a [u8], u32)),
     Unknown(u8),
 }
 
-impl<'de> Deserialize<'de> for Message<'de> {
+impl<'de, 'a> Deserialize<'de> for Message<'a>
+where
+    'de: 'a,
+{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -53,11 +55,11 @@ impl<'de> Deserialize<'de> for Message<'de> {
     }
 }
 
-// #[derive(Debug, Deserialize)]
-// pub struct Identity<'a> {
-//     pub key_blob: &'a [u8],
-//     pub comment: &'a str,
-// }
+#[derive(Debug, Deserialize)]
+pub struct Identity<'a> {
+    pub key_blob: KeyBlob<'a>,
+    pub comment: &'a str,
+}
 
 #[derive(Debug)]
 pub enum KeyBlob<'a> {
@@ -66,7 +68,10 @@ pub enum KeyBlob<'a> {
     Unknown(&'a [u8]),
 }
 
-impl<'de> Deserialize<'de> for KeyBlob<'de> {
+impl<'de, 'a> Deserialize<'de> for KeyBlob<'a>
+where
+    'de: 'a,
+{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
