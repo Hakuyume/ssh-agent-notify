@@ -215,7 +215,7 @@ impl<'de> VariantAccess<'de> for &mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        de::Deserializer::deserialize_tuple(self, fields.len(), visitor)
+        de::Deserializer::deserialize_struct(self, "", fields, visitor)
     }
 }
 
