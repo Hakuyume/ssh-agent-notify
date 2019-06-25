@@ -1,19 +1,15 @@
 use crate::Error;
-use serde::de::{
-    self, Deserialize, DeserializeSeed, EnumAccess, SeqAccess, VariantAccess, Visitor,
-};
+use serde::de::{self, Deserialize, DeserializeSeed, SeqAccess, Visitor};
 use std::convert::TryInto;
 use std::mem;
 
-pub fn from_slice<'de, T>(data: &'de [u8]) -> Result<T, Error>
-where
-    T: Deserialize<'de>,
-{
-    let mut deserializer = Deserializer(data);
-    T::deserialize(&mut deserializer)
-}
+pub struct Deserializer<'de>(&'de [u8]);
 
-struct Deserializer<'de>(&'de [u8]);
+impl<'de> Deserializer<'de> {
+    pub fn new(data: &'de [u8]) -> Self {
+        Self(data)
+    }
+}
 
 macro_rules! impl_uint {
     ($t:ty, $f:ident, $v:ident) => {
@@ -107,7 +103,17 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
     impl_not_supported!(deserialize_option);
     impl_not_supported!(deserialize_unit);
     impl_not_supported!(deserialize_unit_struct, &'static str);
-    impl_not_supported!(deserialize_newtype_struct, &'static str);
+
+    fn deserialize_newtype_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -169,66 +175,9 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'de> {
         self.deserialize_tuple(fields.len(), visitor)
     }
 
-    fn deserialize_enum<V>(
-        self,
-        _name: &'static str,
-        _variants: &'static [&'static str],
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        let mut deserializer = Deserializer(<&'de [u8]>::deserialize(self)?);
-        visitor.visit_enum(&mut deserializer)
-    }
-
+    impl_not_supported!(deserialize_enum, &'static str, &'static [&'static str]);
     impl_not_supported!(deserialize_identifier);
     impl_not_supported!(deserialize_ignored_any);
-}
-
-impl<'de> VariantAccess<'de> for &mut Deserializer<'de> {
-    type Error = Error;
-
-    fn unit_variant(self) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value, Self::Error>
-    where
-        T: DeserializeSeed<'de>,
-    {
-        seed.deserialize(self)
-    }
-
-    fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        de::Deserializer::deserialize_tuple(self, len, visitor)
-    }
-
-    fn struct_variant<V>(
-        self,
-        fields: &'static [&'static str],
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        de::Deserializer::deserialize_struct(self, "", fields, visitor)
-    }
-}
-
-impl<'de> EnumAccess<'de> for &mut Deserializer<'de> {
-    type Error = Error;
-    type Variant = Self;
-
-    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Self::Error>
-    where
-        V: DeserializeSeed<'de>,
-    {
-        Ok((seed.deserialize(&mut *self)?, self))
-    }
 }
 
 #[cfg(test)]
