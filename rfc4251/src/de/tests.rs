@@ -1,6 +1,6 @@
 use super::*;
 use serde::Deserialize;
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Formatter};
 
 fn check<'de, T>(data: &'de [u8], expected: T)
 where
@@ -66,6 +66,54 @@ fn test_struct() {
             byte: 42,
             string: b"foo",
         },
+    );
+}
+
+#[test]
+fn test_enum() {
+    #[derive(Debug, PartialEq)]
+    enum E<'a> {
+        Foo(u8),
+        Bar(&'a [u8]),
+    }
+
+    impl<'de, 'a> Deserialize<'de> for E<'a>
+    where
+        'de: 'a,
+    {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: de::Deserializer<'de>,
+        {
+            struct Visitor;
+
+            impl<'de> de::Visitor<'de> for Visitor {
+                type Value = E<'de>;
+                fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+                    write!(formatter, "a enum tagged by u32")
+                }
+
+                fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
+                where
+                    A: EnumAccess<'de>,
+                {
+                    let (tag, variant) = data.variant::<u32>()?;
+                    match tag {
+                        0 => Ok(E::Foo(variant.newtype_variant()?)),
+                        1 => Ok(E::Bar(variant.newtype_variant()?)),
+                        _ => unreachable!(),
+                    }
+                }
+            }
+
+            deserializer.deserialize_enum("E", &["Foo", "Bar"], Visitor)
+        }
+    }
+
+    check(&[0, 0, 0, 5, 0, 0, 0, 0, 42], E::Foo(42));
+    check(
+        &[0, 0, 0, 11, 0, 0, 0, 1, 0, 0, 0, 3, b'b', b'a', b'r'],
+        E::Bar(b"bar"),
     );
 }
 
