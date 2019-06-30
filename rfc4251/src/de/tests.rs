@@ -89,6 +89,7 @@ fn test_enum() {
 
             impl<'de> de::Visitor<'de> for Visitor {
                 type Value = E<'de>;
+
                 fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
                     write!(formatter, "a enum tagged by u32")
                 }
