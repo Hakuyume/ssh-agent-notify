@@ -1,6 +1,7 @@
 use crate::Error;
 use serde::de::{
-    self, Deserialize, DeserializeSeed, EnumAccess, SeqAccess, VariantAccess, Visitor, Deserializer as _
+    self, Deserialize, DeserializeSeed, Deserializer as _, EnumAccess, SeqAccess, VariantAccess,
+    Visitor,
 };
 use std::convert::TryInto;
 use std::mem;
@@ -11,6 +12,13 @@ impl<'de> Deserializer<'de> {
     pub fn new(data: &'de [u8]) -> Self {
         Self(data)
     }
+}
+
+pub fn from_slice<'de, T>(data: &'de [u8]) -> Result<T, Error>
+    where T: Deserialize<'de>
+{
+    let mut deserializer = Deserializer::new(data);
+    T::deserialize(&mut deserializer)
 }
 
 macro_rules! impl_uint {
