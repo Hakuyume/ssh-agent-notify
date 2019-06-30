@@ -1,6 +1,6 @@
 use crate::Error;
 use serde::de::{
-    self, Deserialize, DeserializeSeed, EnumAccess, SeqAccess, VariantAccess, Visitor,
+    self, Deserialize, DeserializeSeed, EnumAccess, SeqAccess, VariantAccess, Visitor, Deserializer as _
 };
 use std::convert::TryInto;
 use std::mem;
@@ -202,7 +202,7 @@ impl<'de> VariantAccess<'de> for &mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        de::Deserializer::deserialize_tuple(self, len, visitor)
+        self.deserialize_tuple(len, visitor)
     }
 
     fn struct_variant<V>(
@@ -213,7 +213,7 @@ impl<'de> VariantAccess<'de> for &mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        de::Deserializer::deserialize_struct(self, "", fields, visitor)
+        self.deserialize_struct("", fields, visitor)
     }
 }
 
