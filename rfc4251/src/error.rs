@@ -1,13 +1,11 @@
-use serde::de;
 use std::error;
 use std::fmt::{Display, Formatter, Result};
+use std::str::Utf8Error;
 
 #[derive(Debug)]
 pub enum Error {
-    Custom(String),
-
-    NotSupported,
     InsufficientData,
+    Utf8Error(Utf8Error),
 }
 
 impl Display for Error {
@@ -18,11 +16,8 @@ impl Display for Error {
 
 impl error::Error for Error {}
 
-impl de::Error for Error {
-    fn custom<T>(msg: T) -> Self
-    where
-        T: Display,
-    {
-        Error::Custom(format!("{}", msg))
+impl From<Utf8Error> for Error {
+    fn from(err: Utf8Error) -> Self {
+        Error::Utf8Error(err)
     }
 }

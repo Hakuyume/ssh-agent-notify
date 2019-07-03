@@ -1,5 +1,5 @@
-mod de;
 mod error;
+mod read;
 
-pub use self::de::{Deserializer, from_slice};
 pub use self::error::Error;
+pub use self::read::Reader;
