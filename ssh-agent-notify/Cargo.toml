@@ -5,9 +5,14 @@ authors = ["Toru Ogawa <Hakuyume@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
-futures-preview = { version = "=0.3.0-alpha.16", features = ["compat", "io-compat"] }
+base64 = "0.10"
+env_logger = "0.6"
+failure = "0.1"
+futures-preview = { version = "=0.3.0-alpha.17", features = ["compat", "io-compat"] }
+log = "0.4"
 rfc4251 = { path = "../rfc4251" }
 serde = { version = "1.0", features=["derive"] }
+sha2 = "0.8"
 ssh-agent-sys = { path = "../ssh-agent-sys" }
 tempfile = "3.0"
 tokio = "0.1"

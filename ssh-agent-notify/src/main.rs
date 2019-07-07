@@ -2,10 +2,13 @@
 
 mod message;
 
-use self::message::Message;
+use self::message::{KeyBlob, Message};
 use futures::compat::{Compat01As03, Future01CompatExt, Stream01CompatExt};
 use futures::executor::block_on;
 use futures::prelude::*;
+use log::{error, warn};
+use rfc4251::Unpacker;
+use sha2::Sha256;
 use std::convert::TryInto;
 use std::env;
 use std::error::Error;
@@ -15,6 +18,8 @@ use tempfile;
 use tokio::net::{UnixListener, UnixStream};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::init();
+
     let ssh_auth_sock = env::var_os("SSH_AUTH_SOCK").unwrap();
     let ssh_auth_sock = &ssh_auth_sock;
 
@@ -33,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .compat()
             .for_each_concurrent(None, async move |conn| {
                 if let Err(err) = proc(ssh_auth_sock, conn).await {
-                    eprintln!("{}", err);
+                    error!("{}", err);
                 }
             }),
     );
@@ -46,14 +51,34 @@ async fn proc(ssh_auth_sock: &OsStr, conn: io::Result<UnixStream>) -> io::Result
 
     while let Ok(request) = read(&mut client).await {
         server.write_all(&request).await?;
-        if let Ok(request) = rfc4251::from_slice::<Message>(&request) {
-            println!("request: {:?}", request);
+        match Unpacker::new(&request).unpack::<Message>() {
+            Ok(_request) => (),
+            Err(err) => warn!("{}", err),
         }
 
         let response = read(&mut server).await?;
         client.write_all(&response).await?;
-        if let Ok(response) = rfc4251::from_slice::<Message>(&response) {
-            println!("response: {:?}", response);
+        match Unpacker::new(&response).unpack::<Message>() {
+            Ok(response) => {
+                if let Message::IdentitiesAnswer(identities) = response {
+                    for identity in identities {
+                        println!(
+                            "{} SHA256:{} {} ({})",
+                            identity.key.bits(),
+                            base64::encode_config(
+                                &identity.key.digest::<Sha256>(),
+                                base64::Config::new(base64::CharacterSet::Standard, false)
+                            ),
+                            identity.comment,
+                            match identity.key {
+                                KeyBlob::Rsa { .. } => "RSA",
+                                KeyBlob::Ed25519(..) => "ED25519",
+                            }
+                        );
+                    }
+                }
+            }
+            Err(err) => warn!("{}", err),
         }
     }
     Ok(())

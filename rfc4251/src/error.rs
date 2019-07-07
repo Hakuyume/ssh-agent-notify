@@ -5,7 +5,7 @@ use std::str::Utf8Error;
 #[derive(Debug)]
 pub enum Error {
     InsufficientData,
-    Utf8Error(Utf8Error),
+    Utf8(Utf8Error),
 }
 
 impl Display for Error {
@@ -18,6 +18,6 @@ impl error::Error for Error {}
 
 impl From<Utf8Error> for Error {
     fn from(err: Utf8Error) -> Self {
-        Error::Utf8Error(err)
+        Error::Utf8(err)
     }
 }

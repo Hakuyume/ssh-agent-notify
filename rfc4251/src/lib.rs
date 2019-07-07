@@ -1,5 +1,8 @@
 mod error;
-mod read;
+mod pack;
+mod unpack;
 
 pub use self::error::Error;
-pub use self::read::Reader;
+pub use self::pack::{Pack, Packer};
+pub use self::unpack::{Unpack, Unpacker};
+pub use num_bigint;
