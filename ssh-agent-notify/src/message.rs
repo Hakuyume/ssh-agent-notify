@@ -59,7 +59,7 @@ impl<'a> Unpack<'a> for Identity<'a> {
     }
 }
 
-#[derive(Debug, Hash)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub enum KeyBlob {
     Rsa { e: BigInt, p: BigInt },
     Ed25519([u8; 32]),
