@@ -1,7 +1,5 @@
-use crate::Error;
 use num_bigint::BigInt;
 use num_traits::Zero;
-use std::convert::TryFrom;
 
 pub struct Packer(Vec<u8>);
 
