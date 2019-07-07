@@ -2,6 +2,10 @@
 
 A `ssh-agent` proxy that shows notifications when your ssh private keys are used.
 
+This program creates a unix domain socket and bypasses all connections to the actual ssh-agent process.
+When clients send [`SSH_AGENTC_SIGN_REQUEST`](https://tools.ietf.org/id/draft-miller-ssh-agent-01.html#rfc.section.4.5),
+this program shows notifications via [`libnotify`](https://developer.gnome.org/libnotify/).
+
 ## Usage
 
 ```
