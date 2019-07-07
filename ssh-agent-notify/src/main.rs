@@ -1,5 +1,4 @@
 #![feature(async_await)]
-#![recursion_limit = "128"]
 
 mod message;
 
