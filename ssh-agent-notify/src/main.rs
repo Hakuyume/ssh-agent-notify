@@ -1,4 +1,5 @@
 #![feature(async_await)]
+#![recursion_limit = "128"]
 
 mod message;
 
@@ -6,60 +7,67 @@ use self::message::{KeyBlob, Message};
 use failure::{format_err, Error};
 use futures::compat::{Compat01As03, Future01CompatExt, Stream01CompatExt};
 use futures::executor::block_on;
+use futures::future::ready;
 use futures::prelude::*;
-use log::{error, warn};
+use futures::stream::select;
+use log::{error, info, warn};
 use rfc4251::Unpacker;
 use sha2::Sha256;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::env;
 use std::ffi::OsStr;
+use std::fs;
 use std::io;
+use std::path::Path;
 use tokio::net::{UnixListener, UnixStream};
+use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
 
 fn main() -> Result<(), Error> {
-    let _ctx = Context::new()?;
+    env_logger::init();
+    libnotify::init(env!("CARGO_PKG_NAME")).map_err(|err| format_err!("{}", err))?;
+
+    let signals = select(
+        Signal::new(SIGINT)
+            .compat()
+            .map(|stream| stream.map(Stream01CompatExt::compat))
+            .try_flatten_stream(),
+        Signal::new(SIGTERM)
+            .compat()
+            .map(|stream| stream.map(Stream01CompatExt::compat))
+            .try_flatten_stream(),
+    );
 
     let ssh_auth_sock = env::var_os("SSH_AUTH_SOCK").unwrap();
     let ssh_auth_sock = &ssh_auth_sock;
 
-    let sock = std::path::Path::new("ssh-agent-notify.sock");
-    if sock.exists() {
-        std::fs::remove_file(&sock)?;
-    }
+    let sock = Path::new("ssh-agent-notify.sock");
+    let listener = UnixListener::bind(sock)?.incoming().compat();
 
-    let listener = UnixListener::bind(&sock)?;
     block_on(
-        listener
-            .incoming()
-            .compat()
-            .for_each_concurrent(None, async move |conn| {
-                if let Err(err) = proc(ssh_auth_sock, conn).await {
-                    error!("{}", err);
-                }
-            }),
+        select(
+            listener.map(|conn| conn.map(Some)),
+            signals.map(|signal| signal.map(|_| None)),
+        )
+        .take_while(|conn| ready(conn.as_ref().map(|conn| conn.is_some()).unwrap_or(false)))
+        .for_each_concurrent(None, async move |conn| {
+            let conn = conn.unwrap().unwrap();
+            if let Err(err) = proc(ssh_auth_sock, conn).await {
+                error!("{}", err);
+            }
+        }),
     );
+
+    fs::remove_file(sock)?;
+    libnotify::uninit();
+    info!("Exit");
+
     Ok(())
 }
 
-struct Context;
-
-impl Context {
-    fn new() -> Result<Self, Error> {
-        env_logger::init();
-        libnotify::init(env!("CARGO_PKG_NAME")).map_err(|err| format_err!("{}", err))?;
-        Ok(Self)
-    }
-}
-impl Drop for Context {
-    fn drop(&mut self) {
-        libnotify::uninit();
-    }
-}
-
-async fn proc(ssh_auth_sock: &OsStr, conn: io::Result<UnixStream>) -> io::Result<()> {
+async fn proc(ssh_auth_sock: &OsStr, conn: UnixStream) -> io::Result<()> {
     let mut server = Compat01As03::new(UnixStream::connect(ssh_auth_sock).compat().await?);
-    let mut client = Compat01As03::new(conn?);
+    let mut client = Compat01As03::new(conn);
 
     let mut comments = HashMap::new();
 
