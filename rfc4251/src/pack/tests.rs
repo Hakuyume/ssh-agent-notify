@@ -34,7 +34,7 @@ fn test_uint64() {
 
 #[test]
 fn test_string() {
-    check(&b"foo"[..], &[0, 0, 0, 3, b'f', b'o', b'o']);
+    check(b"foo".as_ref(), &[0, 0, 0, 3, b'f', b'o', b'o']);
     check("foo", &[0, 0, 0, 3, b'f', b'o', b'o']);
 }
 

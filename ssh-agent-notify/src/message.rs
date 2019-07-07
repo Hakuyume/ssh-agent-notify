@@ -69,13 +69,13 @@ impl Pack for &KeyBlob {
     fn pack(self, packer: &mut Packer) {
         match self {
             KeyBlob::Rsa { e, p } => {
-                packer.pack(&b"ssh-rsa"[..]);
+                packer.pack(b"ssh-rsa".as_ref());
                 packer.pack(e);
                 packer.pack(p);
             }
             KeyBlob::Ed25519(key) => {
-                packer.pack(&b"ssh-ed25519"[..]);
-                packer.pack(&key[..]);
+                packer.pack(b"ssh-ed25519".as_ref());
+                packer.pack(key.as_ref());
             }
         }
     }

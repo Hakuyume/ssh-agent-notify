@@ -33,7 +33,7 @@ fn test_uint64() {
 
 #[test]
 fn test_string() {
-    check(&[0, 0, 0, 3, b'f', b'o', b'o'], &b"foo"[..]);
+    check(&[0, 0, 0, 3, b'f', b'o', b'o'], b"foo".as_ref());
     check(&[0, 0, 0, 3, b'f', b'o', b'o'], "foo");
 }
 
