@@ -68,10 +68,7 @@ async fn proc(ssh_auth_sock: &OsStr, conn: io::Result<UnixStream>) -> io::Result
         match Unpacker::new(&request).unpack() {
             Ok(Message::SignRequest { key, .. }) => {
                 let notify = libnotify::Notification::new(
-                    &format!(
-                        "ssh-agent {}",
-                        comments.get(&key).unwrap_or(&"".to_owned()),
-                    ),
+                    &format!("ssh-agent {}", comments.get(&key).unwrap_or(&"".to_owned()),),
                     format!(
                         "{} {} bits\nSHA256:{}",
                         match key {
