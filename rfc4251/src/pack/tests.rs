@@ -1,13 +1,11 @@
 use super::*;
-use std::fmt::Debug;
 
 fn check<'a, T>(value: T, expected: &[u8])
 where
     T: Pack,
-    T::Error: Debug,
 {
     let mut packer = Packer::new();
-    packer.pack(value).unwrap();
+    packer.pack(value);
     assert_eq!(packer.inner(), expected);
 }
 
