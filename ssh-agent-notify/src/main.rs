@@ -4,6 +4,7 @@
 mod message;
 
 use self::message::{KeyBlob, Message};
+use clap::{App, Arg};
 use failure::{format_err, Error};
 use futures::compat::{Compat01As03, Future01CompatExt, Stream01CompatExt};
 use futures::executor::block_on;
@@ -19,13 +20,16 @@ use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::io;
-use std::path::Path;
 use tokio::net::{UnixListener, UnixStream};
 use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
 
 fn main() -> Result<(), Error> {
     env_logger::init();
-    libnotify::init(env!("CARGO_PKG_NAME")).map_err(|err| format_err!("{}", err))?;
+    let _libnotify = Libnotify::init().map_err(|err| format_err!("{}", err))?;
+
+    let matches = App::new(env!("CARGO_PKG_NAME"))
+        .arg(Arg::with_name("PROXY_SOCK").required(true).index(1))
+        .get_matches();
 
     let signals = select(
         Signal::new(SIGINT)
@@ -41,8 +45,9 @@ fn main() -> Result<(), Error> {
     let ssh_auth_sock = env::var_os("SSH_AUTH_SOCK").unwrap();
     let ssh_auth_sock = &ssh_auth_sock;
 
-    let sock = Path::new("ssh-agent-notify.sock");
-    let listener = UnixListener::bind(sock)?.incoming().compat();
+    let proxy_sock = matches.value_of("PROXY_SOCK").unwrap();
+    let (_sock_path, listener) = SockPath::bind(proxy_sock)?;
+    let listener = listener.incoming().compat();
 
     block_on(
         select(
@@ -58,10 +63,7 @@ fn main() -> Result<(), Error> {
         }),
     );
 
-    fs::remove_file(sock)?;
-    libnotify::uninit();
     info!("Exit");
-
     Ok(())
 }
 
@@ -133,4 +135,34 @@ where
     r.read_exact(&mut buf[4..]).await?;
 
     Ok(buf)
+}
+
+struct Libnotify;
+
+impl Libnotify {
+    fn init() -> Result<Self, String> {
+        libnotify::init(env!("CARGO_PKG_NAME"))?;
+        Ok(Self)
+    }
+}
+
+impl Drop for Libnotify {
+    fn drop(&mut self) {
+        libnotify::uninit();
+    }
+}
+
+struct SockPath<'a>(&'a str);
+
+impl<'a> SockPath<'a> {
+    fn bind(path: &'a str) -> io::Result<(Self, UnixListener)> {
+        let listener = UnixListener::bind(path)?;
+        Ok((Self(path), listener))
+    }
+}
+
+impl<'a> Drop for SockPath<'a> {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(self.0);
+    }
 }
