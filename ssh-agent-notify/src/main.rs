@@ -19,7 +19,6 @@ use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::io;
-use std::ops::Deref;
 use tokio::net::{UnixListener, UnixStream};
 use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
 
@@ -126,7 +125,7 @@ where
         buf.set_len(4);
     }
     r.read_exact(&mut buf).await?;
-    let len = u32::from_be_bytes(buf.deref().try_into().unwrap()) as usize;
+    let len = u32::from_be_bytes((&buf as &[_]).try_into().unwrap()) as usize;
 
     unsafe {
         buf.reserve(len);

@@ -1,6 +1,5 @@
 use num_bigint::BigInt;
 use num_traits::Zero;
-use std::ops::Deref;
 
 #[derive(Default)]
 pub struct Packer(Vec<u8>);
@@ -71,9 +70,9 @@ impl Pack for &str {
 impl Pack for &BigInt {
     fn pack(self, packer: &mut Packer) {
         if self.is_zero() {
-            packer.pack(0_u32);
+            packer.pack(&[] as &[u8]);
         } else {
-            packer.pack(self.to_signed_bytes_be().deref());
+            packer.pack(&self.to_signed_bytes_be() as &[_]);
         }
     }
 }
