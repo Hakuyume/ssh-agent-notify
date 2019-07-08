@@ -5,10 +5,6 @@ use num_traits::Zero;
 pub struct Packer(Vec<u8>);
 
 impl Packer {
-    pub fn new() -> Self {
-        Self(Vec::new())
-    }
-
     pub fn inner(self) -> Vec<u8> {
         self.0
     }

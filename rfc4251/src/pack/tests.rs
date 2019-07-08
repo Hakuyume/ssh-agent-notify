@@ -4,7 +4,7 @@ fn check<'a, T>(value: T, expected: &[u8])
 where
     T: Pack,
 {
-    let mut packer = Packer::new();
+    let mut packer = Packer::default();
     packer.pack(value);
     assert_eq!(packer.inner(), expected);
 }

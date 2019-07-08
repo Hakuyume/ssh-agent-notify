@@ -112,7 +112,7 @@ impl KeyBlob {
     where
         D: Digest,
     {
-        let mut packer = Packer::new();
+        let mut packer = Packer::default();
         packer.pack(self);
         D::digest(&packer.inner())
     }
