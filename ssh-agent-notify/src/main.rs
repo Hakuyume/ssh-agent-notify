@@ -54,7 +54,7 @@ fn main() -> Result<(), Error> {
             listener.map(|conn| conn.map(Some)),
             signals.map(|signal| signal.map(|_| None)),
         )
-        .take_while(|conn| ready(conn.as_ref().map(|conn| conn.is_some()).unwrap_or(false)))
+        .take_while(|conn| ready(if let Ok(Some(_)) = conn { true } else { false }))
         .for_each_concurrent(None, async move |conn| {
             let conn = conn.unwrap().unwrap();
             if let Err(err) = proc(ssh_auth_sock, conn).await {
