@@ -22,7 +22,7 @@ impl<'a> Unpack<'a> for Message<'a> {
 
     fn unpack(unpacker: &mut Unpacker<'a>) -> Result<Self, Self::Error> {
         let mut unpacker = Unpacker::new(unpacker.unpack()?);
-        match unpacker.unpack::<u8>()? as _ {
+        match u32::from(unpacker.unpack::<u8>()?) {
             ssh_agent_sys::SSH2_AGENTC_REQUEST_IDENTITIES => Ok(Message::RequestIdentites),
             ssh_agent_sys::SSH2_AGENT_IDENTITIES_ANSWER => Ok(Message::IdentitiesAnswer(
                 (0..unpacker.unpack::<u32>()?)

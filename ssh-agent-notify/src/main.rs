@@ -1,4 +1,5 @@
 #![feature(async_await)]
+#![feature(async_closure)]
 
 mod message;
 
