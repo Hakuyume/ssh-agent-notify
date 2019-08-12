@@ -6,7 +6,6 @@ mod message;
 use self::message::{KeyBlob, Message};
 use clap::{App, Arg};
 use failure::{format_err, Error};
-use futures::compat::{Compat01As03, Future01CompatExt, Stream01CompatExt};
 use futures::executor::block_on;
 use futures::future::ready;
 use futures::prelude::*;
@@ -20,6 +19,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::io;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
 
@@ -31,28 +31,19 @@ fn main() -> Result<(), Error> {
         .arg(Arg::with_name("PROXY_SOCK").required(true).index(1))
         .get_matches();
 
-    let signals = select(
-        Signal::new(SIGINT)
-            .compat()
-            .map(|stream| stream.map(Stream01CompatExt::compat))
-            .try_flatten_stream(),
-        Signal::new(SIGTERM)
-            .compat()
-            .map(|stream| stream.map(Stream01CompatExt::compat))
-            .try_flatten_stream(),
-    );
+    let signals = select(Signal::new(SIGINT)?, Signal::new(SIGTERM)?);
 
     let ssh_auth_sock = env::var_os("SSH_AUTH_SOCK").unwrap();
     let ssh_auth_sock = &ssh_auth_sock;
 
     let proxy_sock = matches.value_of("PROXY_SOCK").unwrap();
     let (_sock_path, listener) = SockPath::bind(proxy_sock)?;
-    let listener = listener.incoming().compat();
+    let listener = listener.incoming();
 
     block_on(
         select(
             listener.map(|conn| conn.map(Some)),
-            signals.map(|signal| signal.map(|_| None)),
+            signals.map(|_| Ok(None)),
         )
         .take_while(|conn| ready(if let Ok(Some(_)) = conn { true } else { false }))
         .for_each_concurrent(None, async move |conn| {
@@ -68,8 +59,8 @@ fn main() -> Result<(), Error> {
 }
 
 async fn proc(ssh_auth_sock: &OsStr, conn: UnixStream) -> io::Result<()> {
-    let mut server = Compat01As03::new(UnixStream::connect(ssh_auth_sock).compat().await?);
-    let mut client = Compat01As03::new(conn);
+    let mut server = UnixStream::connect(ssh_auth_sock).await?;
+    let mut client = conn;
 
     let mut comments = HashMap::new();
 
