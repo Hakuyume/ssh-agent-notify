@@ -6,7 +6,6 @@ mod message;
 use self::message::{KeyBlob, Message};
 use clap::{App, Arg};
 use failure::{format_err, Error};
-use futures::future::ready;
 use futures::prelude::*;
 use futures::stream::select;
 use log::{error, info, warn};
@@ -40,17 +39,19 @@ fn main() -> Result<(), Error> {
     let listener = listener.incoming();
 
     let mut rt = Runtime::new()?;
+    let handle = rt.handle();
     rt.spawn(async move {
-        let ssh_auth_sock = &ssh_auth_sock;
-        select(listener.map(Some), signals.map(|_| None))
-            .take_while(|conn| ready(conn.is_some()))
-            .for_each_concurrent(None, async move |conn| {
-                let conn = conn.unwrap();
-                if let Err(err) = ready(conn).and_then(|conn| proc(ssh_auth_sock, conn)).await {
-                    error!("{}", err);
-                }
-            })
-            .await;
+        let mut stream = select(listener.map(Some), signals.map(|_| None));
+        while let Some(Some(conn)) = stream.next().await {
+            let ssh_auth_sock = ssh_auth_sock.clone();
+            handle
+                .spawn(async move {
+                    if let Err(err) = async { proc(&ssh_auth_sock, conn?).await }.await {
+                        error!("{}", err);
+                    }
+                })
+                .unwrap();
+        }
     })
     .run()?;
     info!("Exit");
