@@ -6,7 +6,6 @@ mod message;
 use self::message::{KeyBlob, Message};
 use clap::{App, Arg};
 use failure::{format_err, Error};
-use futures::executor::block_on;
 use futures::future::ready;
 use futures::prelude::*;
 use futures::stream::select;
@@ -21,6 +20,7 @@ use std::fs;
 use std::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
+use tokio::runtime::current_thread::Runtime;
 use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
 
 fn main() -> Result<(), Error> {
@@ -34,26 +34,25 @@ fn main() -> Result<(), Error> {
     let signals = select(Signal::new(SIGINT)?, Signal::new(SIGTERM)?);
 
     let ssh_auth_sock = env::var_os("SSH_AUTH_SOCK").unwrap();
-    let ssh_auth_sock = &ssh_auth_sock;
 
     let proxy_sock = matches.value_of("PROXY_SOCK").unwrap();
     let (_sock_path, listener) = SockPath::bind(proxy_sock)?;
     let listener = listener.incoming();
 
-    block_on(
-        select(
-            listener.map(|conn| conn.map(Some)),
-            signals.map(|_| Ok(None)),
-        )
-        .take_while(|conn| ready(if let Ok(Some(_)) = conn { true } else { false }))
-        .for_each_concurrent(None, async move |conn| {
-            let conn = conn.unwrap().unwrap();
-            if let Err(err) = proc(ssh_auth_sock, conn).await {
-                error!("{}", err);
-            }
-        }),
-    );
-
+    let mut rt = Runtime::new()?;
+    rt.spawn(async move {
+        let ssh_auth_sock = &ssh_auth_sock;
+        select(listener.map(Some), signals.map(|_| None))
+            .take_while(|conn| ready(conn.is_some()))
+            .for_each_concurrent(None, async move |conn| {
+                let conn = conn.unwrap();
+                if let Err(err) = ready(conn).and_then(|conn| proc(ssh_auth_sock, conn)).await {
+                    error!("{}", err);
+                }
+            })
+            .await;
+    })
+    .run()?;
     info!("Exit");
     Ok(())
 }
