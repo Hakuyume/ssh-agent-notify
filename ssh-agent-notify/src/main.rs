@@ -20,7 +20,7 @@ use std::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::runtime::current_thread::Runtime;
-use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
+use tokio_net::signal::unix::{Signal, SignalKind};
 
 fn main() -> Result<(), Error> {
     env_logger::init();
@@ -30,7 +30,10 @@ fn main() -> Result<(), Error> {
         .arg(Arg::with_name("PROXY_SOCK").required(true).index(1))
         .get_matches();
 
-    let signals = select(Signal::new(SIGINT)?, Signal::new(SIGTERM)?);
+    let signals = select(
+        Signal::new(SignalKind::interrupt())?,
+        Signal::new(SignalKind::terminate())?,
+    );
 
     let ssh_auth_sock = env::var_os("SSH_AUTH_SOCK").unwrap();
 
