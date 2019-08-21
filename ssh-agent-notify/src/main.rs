@@ -19,44 +19,37 @@ use std::fs;
 use std::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
-use tokio::runtime::current_thread::Runtime;
 use tokio_net::signal::unix::{Signal, SignalKind};
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     env_logger::init();
     let _libnotify = Libnotify::init().map_err(|err| format_err!("{}", err))?;
+
+    let ssh_auth_sock = env::var_os("SSH_AUTH_SOCK").unwrap();
 
     let matches = App::new(env!("CARGO_PKG_NAME"))
         .arg(Arg::with_name("PROXY_SOCK").required(true).index(1))
         .get_matches();
+    let proxy_sock = matches.value_of("PROXY_SOCK").unwrap();
+
+    let (_sock_path, listener) = SockPath::bind(proxy_sock)?;
+    let listener = listener.incoming();
 
     let signals = select(
         Signal::new(SignalKind::interrupt())?,
         Signal::new(SignalKind::terminate())?,
     );
 
-    let ssh_auth_sock = env::var_os("SSH_AUTH_SOCK").unwrap();
-
-    let proxy_sock = matches.value_of("PROXY_SOCK").unwrap();
-    let (_sock_path, listener) = SockPath::bind(proxy_sock)?;
-    let listener = listener.incoming();
-
-    let mut rt = Runtime::new()?;
-    let handle = rt.handle();
-    rt.spawn(async move {
-        let mut stream = select(listener.map(Some), signals.map(|_| None));
-        while let Some(Some(conn)) = stream.next().await {
-            let ssh_auth_sock = ssh_auth_sock.clone();
-            handle
-                .spawn(async move {
-                    if let Err(err) = async { proc(&ssh_auth_sock, conn?).await }.await {
-                        error!("{}", err);
-                    }
-                })
-                .unwrap();
-        }
-    })
-    .run()?;
+    let mut stream = select(listener.map(Some), signals.map(|_| None));
+    while let Some(Some(conn)) = stream.next().await {
+        let ssh_auth_sock = ssh_auth_sock.clone();
+        tokio::spawn(async move {
+            if let Err(err) = async { proc(&ssh_auth_sock, conn?).await }.await {
+                error!("{}", err);
+            }
+        });
+    }
     info!("Exit");
     Ok(())
 }
