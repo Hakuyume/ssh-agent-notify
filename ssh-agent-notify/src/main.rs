@@ -54,9 +54,8 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn proc(ssh_auth_sock: &OsStr, conn: UnixStream) -> io::Result<()> {
+async fn proc(ssh_auth_sock: &OsStr, mut client: UnixStream) -> io::Result<()> {
     let mut server = UnixStream::connect(ssh_auth_sock).await?;
-    let mut client = conn;
 
     let mut comments = HashMap::new();
 
