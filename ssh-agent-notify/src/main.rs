@@ -1,6 +1,3 @@
-#![feature(async_await)]
-#![feature(async_closure)]
-
 mod message;
 
 use self::message::{KeyBlob, Message};
@@ -18,8 +15,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
-use tokio::net::{UnixListener, UnixStream};
-use tokio_net::signal::unix::{Signal, SignalKind};
+use tokio::net::{signal, UnixListener, UnixStream};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -36,12 +32,7 @@ async fn main() -> Result<(), Error> {
     let (_sock_path, listener) = SockPath::bind(proxy_sock)?;
     let listener = listener.incoming();
 
-    let signals = select(
-        Signal::new(SignalKind::interrupt())?,
-        Signal::new(SignalKind::terminate())?,
-    );
-
-    let mut stream = select(listener.map(Some), signals.map(|_| None));
+    let mut stream = select(listener.map(Some), signal::ctrl_c()?.map(|_| None));
     while let Some(Some(conn)) = stream.next().await {
         let ssh_auth_sock = ssh_auth_sock.clone();
         tokio::spawn(async move {

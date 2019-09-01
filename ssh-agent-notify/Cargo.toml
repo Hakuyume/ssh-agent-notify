@@ -15,5 +15,4 @@ log = "0.4"
 rfc4251 = { path = "../rfc4251" }
 sha2 = "0.8"
 ssh-agent-sys = { path = "../ssh-agent-sys" }
-tokio = { version = "=0.2.0-alpha.2", features=["uds"] }
-tokio-net = { version = "=0.2.0-alpha.2", features=["signal"] }
+tokio = { version = "=0.2.0-alpha.4", features=["signal", "uds"] }
