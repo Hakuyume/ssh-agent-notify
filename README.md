@@ -10,6 +10,6 @@ this program shows notifications via [`libnotify`](https://developer.gnome.org/l
 
 ```
 $ echo $SSH_AUTH_SOCK  # make sure ssh-agent is running and $SSH_AUTH_SOCK is set.
-$ cargo +nightly run --release -- ssh-agent-notify.sock &
+$ cargo run --release -- ssh-agent-notify.sock &
 $ SSH_AUTH_SOCK=ssh-agent-notify.sock ssh some_host  # connect a host that uses public key authentication.
 ```
