@@ -9,10 +9,10 @@ base64 = "0.10"
 clap = "2.33"
 env_logger = "0.6"
 failure = "0.1"
-futures-preview = "=0.3.0-alpha.18"
+futures = "0.3"
 libnotify = "1.0"
 log = "0.4"
 rfc4251 = { path = "../rfc4251" }
 sha2 = "0.8"
 ssh-agent-sys = { path = "../ssh-agent-sys" }
-tokio = { version = "=0.2.0-alpha.4", features=["signal", "uds"] }
+tokio = { git = "https://github.com/tokio-rs/tokio", features=["signal", "uds"] }

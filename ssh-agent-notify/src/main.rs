@@ -15,7 +15,8 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
-use tokio::net::{signal, UnixListener, UnixStream};
+use tokio::net::{UnixListener, UnixStream};
+use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
