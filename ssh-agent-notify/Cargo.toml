@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 base64 = "0.10"
 clap = "2.33"
-env_logger = "0.6"
+env_logger = "0.7"
 failure = "0.1"
 futures = "0.3"
 libnotify = "1.0"
