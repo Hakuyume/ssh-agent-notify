@@ -40,7 +40,7 @@ async fn main() -> Result<(), Error> {
         stream::once(signal::ctrl_c()).map(Either::Right),
     );
     pin_mut!(stream);
-    while let Some(Either::Left(conn)) = stream.next().await {
+    while let Either::Left(conn) = stream.select_next_some().await {
         let ssh_auth_sock = ssh_auth_sock.clone();
         tokio::spawn(async move {
             if let Err(err) = async { proc(&ssh_auth_sock, conn?).await }.await {
