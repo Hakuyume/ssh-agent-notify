@@ -16,8 +16,9 @@ use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::io;
+use std::path::Path;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
-use tokio::net::{UnixListener, UnixStream};
+use tokio::net::{self, UnixStream};
 use tokio::signal;
 
 #[tokio::main]
@@ -32,14 +33,13 @@ async fn main() -> Fallible<()> {
         .get_matches();
     let proxy_sock = matches.value_of("PROXY_SOCK").unwrap();
 
-    let (_sock_path, mut listener) = SockPath::bind(proxy_sock)?;
-    let listener = listener.incoming();
-
+    let mut listener = UnixListener::bind(proxy_sock)?;
     let stream = select(
-        listener.map(Either::Left),
+        listener.incoming().map(Either::Left),
         stream::once(signal::ctrl_c()).map(Either::Right),
     );
     pin_mut!(stream);
+
     while let Either::Left(conn) = stream.select_next_some().await {
         let ssh_auth_sock = ssh_auth_sock.clone();
         tokio::spawn(async move {
@@ -136,17 +136,35 @@ impl Drop for Libnotify {
     }
 }
 
-struct SockPath<'a>(&'a str);
+struct UnixListener<P>
+where
+    P: AsRef<Path>,
+{
+    inner: net::UnixListener,
+    path: P,
+}
 
-impl<'a> SockPath<'a> {
-    fn bind(path: &'a str) -> io::Result<(Self, UnixListener)> {
-        let listener = UnixListener::bind(path)?;
-        Ok((Self(path), listener))
+impl<P> UnixListener<P>
+where
+    P: AsRef<Path>,
+{
+    fn bind(path: P) -> io::Result<Self> {
+        Ok(Self {
+            inner: net::UnixListener::bind(path.as_ref())?,
+            path,
+        })
+    }
+
+    fn incoming(&mut self) -> net::unix::Incoming<'_> {
+        self.inner.incoming()
     }
 }
 
-impl<'a> Drop for SockPath<'a> {
+impl<P> Drop for UnixListener<P>
+where
+    P: AsRef<Path>,
+{
     fn drop(&mut self) {
-        let _ = fs::remove_file(self.0);
+        let _ = fs::remove_file(self.path.as_ref());
     }
 }
