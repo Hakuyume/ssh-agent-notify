@@ -3,6 +3,8 @@ mod message;
 use self::message::{KeyBlob, Message};
 use clap::{App, Arg};
 use failure::{format_err, Error};
+use futures::future::Either;
+use futures::pin_mut;
 use futures::prelude::*;
 use futures::stream::select;
 use log::{error, info, warn};
@@ -30,11 +32,15 @@ async fn main() -> Result<(), Error> {
         .get_matches();
     let proxy_sock = matches.value_of("PROXY_SOCK").unwrap();
 
-    let (_sock_path, listener) = SockPath::bind(proxy_sock)?;
+    let (_sock_path, mut listener) = SockPath::bind(proxy_sock)?;
     let listener = listener.incoming();
 
-    let mut stream = select(listener.map(Some), signal::ctrl_c()?.map(|_| None));
-    while let Some(Some(conn)) = stream.next().await {
+    let stream = select(
+        listener.map(Either::Left),
+        stream::once(signal::ctrl_c()).map(Either::Right),
+    );
+    pin_mut!(stream);
+    while let Some(Either::Left(conn)) = stream.next().await {
         let ssh_auth_sock = ssh_auth_sock.clone();
         tokio::spawn(async move {
             if let Err(err) = async { proc(&ssh_auth_sock, conn?).await }.await {
