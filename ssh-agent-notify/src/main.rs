@@ -2,7 +2,7 @@ mod message;
 
 use self::message::{KeyBlob, Message};
 use clap::{App, Arg};
-use failure::{format_err, Error};
+use failure::{format_err, Fallible};
 use futures::future::Either;
 use futures::pin_mut;
 use futures::prelude::*;
@@ -21,7 +21,7 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::signal;
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Fallible<()> {
     env_logger::init();
     let _libnotify = Libnotify::init().map_err(|err| format_err!("{}", err))?;
 
